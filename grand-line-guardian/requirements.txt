@@ -1,0 +1,5 @@
+# No external dependencies.
+# Grand Line Guardian is built entirely on the Python standard library:
+#   os, sys, time, signal, termios, tty, select
+# Process and system stats are read directly from the /proc virtual
+# filesystem rather than through a third-party library like psutil.
