@@ -1,167 +1,72 @@
-import os
+"""Grand Line Guardian - a real-time terminal process monitor.
+
+Every running process is a "ship" on the Grand Line; this is the
+navigator's live watch over all of them.
+"""
+
 import time
-import sys
-import signal
-import termios
-import tty
-import select
 
-PROC_DIR = "/proc"
+from rich.console import Console
+from rich.live import Live
+
+import proc_reader
+import ui
+from actions import kill_process
+from input_handler import RawTerminal, get_key
+from models import ProcessRow
+
 REFRESH_INTERVAL = 0.5  # seconds; must stay under 1s per spec
+STEP = 0.05
 
 
-# --------------------------------------------------
-# Get memory usage of a process
-# --------------------------------------------------
+def collect_rows(pids, previous_cpu_ticks, system_ticks_delta):
+    rows = []
 
-def get_memory(pid):
-    try:
-        with open(f"/proc/{pid}/status", "r") as file:
-            for line in file:
-                if line.startswith("VmRSS:"):
-                    return line.split()[1] + " kB"
+    for pid in pids:
+        try:
+            name = proc_reader.get_process_name(pid)
+            memory_kb = proc_reader.get_process_memory_kb(pid)
 
-    except FileNotFoundError:
-        return "N/A"
+            current_ticks = proc_reader.get_process_cpu_ticks(pid)
+            delta = current_ticks - previous_cpu_ticks.get(pid, 0)
 
-    return "0 kB"
+            if system_ticks_delta > 0:
+                cpu_percent = (delta / system_ticks_delta) * 100
+            else:
+                cpu_percent = 0.0
 
+            rows.append(ProcessRow(pid=pid, name=name, cpu_percent=cpu_percent, memory_kb=memory_kb))
 
-# --------------------------------------------------
-# Get the process name
-# --------------------------------------------------
+        except (FileNotFoundError, IndexError, PermissionError):
+            # Process may have disappeared between snapshots
+            continue
 
-def get_process_name(pid):
-    try:
-        with open(f"/proc/{pid}/comm", "r") as file:
-            return file.read().strip()
-    except FileNotFoundError:
-        return "?"
+    return rows
 
-
-# --------------------------------------------------
-# Get CPU time used by a process
-# --------------------------------------------------
-
-def get_process_cpu_time(pid):
-    try:
-        with open(f"/proc/{pid}/stat", "r") as file:
-            values = file.read().split()
-
-            # Field 14 = user CPU time
-            utime = int(values[13])
-
-            # Field 15 = kernel CPU time
-            stime = int(values[14])
-
-            return utime + stime
-
-    except (FileNotFoundError, IndexError):
-        return 0
-
-
-# --------------------------------------------------
-# Get total CPU time of the system
-# --------------------------------------------------
-
-def get_total_cpu_time():
-    try:
-        with open("/proc/stat", "r") as file:
-            first_line = file.readline()
-
-        values = first_line.split()[1:]
-
-        return sum(int(value) for value in values)
-
-    except (FileNotFoundError, ValueError):
-        return 0
-
-
-# --------------------------------------------------
-# List every currently running PID, sorted
-# --------------------------------------------------
-
-def list_pids():
-    return sorted(
-        (entry for entry in os.listdir(PROC_DIR) if entry.isdigit()),
-        key=int,
-    )
-
-
-# --------------------------------------------------
-# Terminate a process by PID
-# --------------------------------------------------
-
-def kill_process(pid):
-    try:
-        os.kill(int(pid), signal.SIGTERM)
-        return f"Sent SIGTERM to PID {pid}"
-    except ProcessLookupError:
-        return f"PID {pid} no longer exists"
-    except PermissionError:
-        return f"Permission denied killing PID {pid}"
-
-
-# --------------------------------------------------
-# Read a single keypress, resolving arrow-key escape
-# sequences (ESC [ A = up, ESC [ B = down).
-# --------------------------------------------------
-
-def get_key():
-    # Read straight from the raw fd (not the buffered sys.stdin wrapper) so
-    # that select() and read() agree on what's actually pending.
-    fd = sys.stdin.fileno()
-
-    if not select.select([fd], [], [], 0)[0]:
-        return None
-
-    ch = os.read(fd, 1).decode(errors="ignore")
-    if ch != "\x1b":
-        return ch
-
-    if select.select([fd], [], [], 0)[0]:
-        ch2 = os.read(fd, 1).decode(errors="ignore")
-        if ch2 == "[" and select.select([fd], [], [], 0)[0]:
-            ch3 = os.read(fd, 1).decode(errors="ignore")
-            return {"A": "UP", "B": "DOWN"}.get(ch3)
-
-    return "ESC"
-
-
-# --------------------------------------------------
-# Main program
-# --------------------------------------------------
 
 def main():
-    old_settings = termios.tcgetattr(sys.stdin)
+    console = Console()
     selected = 0
     status_message = ""
 
-    try:
-        # Put terminal into character-at-a-time mode
-        tty.setcbreak(sys.stdin.fileno())
-
+    with RawTerminal(), Live(console=console, auto_refresh=False, screen=True) as live:
         while True:
-            pids = list_pids()
+            pids = proc_reader.list_pids()
 
             # ------------------------------------------
-            # FIRST CPU SNAPSHOT
+            # FIRST SNAPSHOT (per-process and system-wide)
             # ------------------------------------------
 
-            previous_process_times = {
-                pid: get_process_cpu_time(pid) for pid in pids
-            }
-            previous_system_time = get_total_cpu_time()
+            previous_cpu_ticks = {pid: proc_reader.get_process_cpu_ticks(pid) for pid in pids}
+            previous_idle, previous_total = proc_reader.get_system_cpu_times()
 
             # ------------------------------------------
-            # Wait REFRESH_INTERVAL seconds while
-            # checking the keyboard for navigation,
-            # a kill request, or quit.
+            # Wait REFRESH_INTERVAL seconds while checking
+            # the keyboard for navigation, kill, or quit.
             # ------------------------------------------
 
             quit_program = False
             elapsed = 0.0
-            step = 0.05
 
             while elapsed < REFRESH_INTERVAL:
                 key = get_key()
@@ -176,99 +81,52 @@ def main():
                 elif key == "x" and pids:
                     status_message = kill_process(pids[selected])
 
-                time.sleep(step)
-                elapsed += step
+                time.sleep(STEP)
+                elapsed += STEP
 
             if quit_program:
                 break
 
             # ------------------------------------------
-            # SECOND CPU SNAPSHOT
+            # SECOND SNAPSHOT
             # ------------------------------------------
 
-            current_system_time = get_total_cpu_time()
-            system_delta = current_system_time - previous_system_time
+            current_idle, current_total = proc_reader.get_system_cpu_times()
+            total_delta = current_total - previous_total
+            idle_delta = current_idle - previous_idle
+
+            if total_delta > 0:
+                system_cpu_percent = (1 - idle_delta / total_delta) * 100
+            else:
+                system_cpu_percent = 0.0
+
+            mem_used_kb, mem_total_kb = proc_reader.get_system_memory_kb()
 
             # ------------------------------------------
-            # Display table
+            # Build this frame and render it
             # ------------------------------------------
 
-            os.system("clear")
+            rows = collect_rows(pids, previous_cpu_ticks, total_delta)
 
-            print("=" * 75)
-            print("                     GRAND LINE GUARDIAN")
-            print("=" * 75)
-            print()
-
-            print(
-                f"{'':<3}"
-                f"{'PID':<10}"
-                f"{'PROCESS NAME':<25}"
-                f"{'CPU %':<12}"
-                f"{'MEMORY'}"
-            )
-
-            print("-" * 75)
-
-            count = 0
-
-            for index, pid in enumerate(pids):
-                try:
-                    process_name = get_process_name(pid)
-                    memory = get_memory(pid)
-
-                    current_process_time = get_process_cpu_time(pid)
-                    process_delta = (
-                        current_process_time
-                        - previous_process_times.get(pid, 0)
-                    )
-
-                    if system_delta > 0:
-                        cpu_percent = (process_delta / system_delta) * 100
-                    else:
-                        cpu_percent = 0
-
-                    marker = ">" if index == selected else " "
-
-                    print(
-                        f"{marker:<3}"
-                        f"{pid:<10}"
-                        f"{process_name:<25}"
-                        f"{cpu_percent:<12.2f}"
-                        f"{memory}"
-                    )
-
-                    count += 1
-
-                except (FileNotFoundError, IndexError, PermissionError):
-                    # Process may have disappeared between snapshots
-                    continue
-
-            if count == 0:
+            if not rows:
                 selected = 0
-            elif selected >= count:
-                selected = count - 1
+            elif selected >= len(rows):
+                selected = len(rows) - 1
 
-            # ------------------------------------------
-            # Footer
-            # ------------------------------------------
+            live.update(
+                ui.build_screen(
+                    system_cpu_percent,
+                    mem_used_kb,
+                    mem_total_kb,
+                    rows,
+                    selected,
+                    status_message,
+                    console.size.height,
+                )
+            )
+            live.refresh()
 
-            print("-" * 75)
-            print(f"Total Active Processes: {count}")
-            if status_message:
-                print(status_message)
-            print()
-            print("Up/Down: move   x: terminate selected ship   q: quit")
-
-    finally:
-        # Restore normal terminal settings
-        termios.tcsetattr(
-            sys.stdin,
-            termios.TCSADRAIN,
-            old_settings
-        )
-
-        print("\nGrand Line Guardian stopped.")
+    print("\nGrand Line Guardian stopped.")
 
 
 if __name__ == "__main__":
