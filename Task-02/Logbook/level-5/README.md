@@ -21,11 +21,21 @@ python3 poneglyph.py
 
 Rather than working on the current state of the branch, checked out
 `alternate_timeline` and used `git log` to find a specific earlier commit
-(`d4e7bf5`) — a point "before the cannons fired" — and checked that out
-directly to reach the untouched files still sitting in `Enies_Lobby`.
+(`d4e7bf5`, labeled "Level 5: Vault Sealed") — a point "before the cannons
+fired" — and checked that out directly to reach the untouched files still
+sitting in `Enies_Lobby/.cp9_secure_vault`.
 
-### Note on this level's documentation
+`poneglyph.py` wanted the two cipher fragments from Levels 3 and 4
+concatenated together as the unlock code:
 
-I don't have a screenshot for this one — this writeup is reconstructed from
-my actual shell history rather than a captured image. I'd rather say that
-plainly than fake a screenshot or pretend a level was skipped.
+```
+Enter code : KjY2MjF4bW0lKzYqNyBsIS0vbTAtJTcnLSwnbzptDiM3JSpvFiMuJ28PJzAlJ28VIzA=
+Prize :
+https://github.com/rogueone-x/Laugh-Tale-Merge-War
+```
+
+### Result
+
+`PONEGLYPH_FRAGMENT_I` + `PONEGLYPH_FRAGMENT_II` reassembled into the vault
+code, which unlocked the URL for the Level 6 repo — the two Little
+Garden/Water 7 fragments only became useful once combined here.

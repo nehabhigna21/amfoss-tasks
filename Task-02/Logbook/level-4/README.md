@@ -46,5 +46,8 @@ cat secret_link.txt
 ### Result
 
 Three layers of disguise (gzip → tar → zip) peeled back using `file` at each
-step rather than assuming the extension, ending in `blueprints_extracted/secret_link.txt`
-— the second cipher fragment.
+step rather than assuming the extension, ending in `blueprints_extracted/secret_link.txt`:
+
+```
+PONEGLYPH_FRAGMENT_II="SwnbzptDiM3JSpvFiMuJ28PJzAlJ28VIzA="
+```
