@@ -73,6 +73,10 @@ scheduler
 *.out
 vendor/
 
+# ---- Java (Task-04) ----
+*.class
+*.jar
+
 # ---- Misc build / temp ----
 tmp/
 temp/
