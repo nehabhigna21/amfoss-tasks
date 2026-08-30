@@ -1,17 +1,11 @@
 package main
-
 import "sort"
-
-// RunRoundRobin schedules crews in fixed-size time slices (the quantum).
-// Crews that arrive while another crew is running join the back of the
-// ready queue in arrival order, ahead of the crew that just gave up the CPU.
 func RunRoundRobin(processes []Process, quantum int) ([]GanttSegment, []ProcessResult) {
 	byArrival := make([]Process, len(processes))
 	copy(byArrival, processes)
 	sort.SliceStable(byArrival, func(i, j int) bool {
 		return byArrival[i].ArrivalTime < byArrival[j].ArrivalTime
 	})
-
 	remaining := make(map[string]int, len(processes))
 	for _, p := range processes {
 		remaining[p.ID] = p.BurstTime
@@ -21,7 +15,7 @@ func RunRoundRobin(processes []Process, quantum int) ([]GanttSegment, []ProcessR
 	completion := make(map[string]int)
 
 	arrived := make([]bool, len(byArrival))
-	var queue []int // indices into byArrival
+	var queue []int
 	currentTime := 0
 
 	enqueueArrivals := func(upTo int) {
@@ -41,7 +35,7 @@ func RunRoundRobin(processes []Process, quantum int) ([]GanttSegment, []ProcessR
 	finished := 0
 	for finished < len(byArrival) {
 		if len(queue) == 0 {
-			// CPU idle; jump to the next arrival.
+			
 			next := -1
 			for i, p := range byArrival {
 				if !arrived[i] && (next == -1 || p.ArrivalTime < byArrival[next].ArrivalTime) {

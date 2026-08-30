@@ -5,11 +5,6 @@ import (
 	"strconv"
 	"strings"
 )
-
-// PrintGantt renders the execution timeline as a simple ASCII bar, e.g.:
-//
-// | P1 | P2 | P1 | P3 |
-// 0    4    7    9    13
 func PrintGantt(segments []GanttSegment) {
 	if len(segments) == 0 {
 		fmt.Println("(no execution)")
@@ -39,8 +34,6 @@ func PrintGantt(segments []GanttSegment) {
 	fmt.Println(bar.String())
 	fmt.Println(ticks.String())
 }
-
-// PrintResults renders the per-process metrics table plus the averages.
 func PrintResults(results []ProcessResult) {
 	fmt.Printf("\n%-8s %-8s %-8s %-10s %-12s %-10s\n",
 		"PID", "Arrival", "Burst", "Complete", "Turnaround", "Waiting")

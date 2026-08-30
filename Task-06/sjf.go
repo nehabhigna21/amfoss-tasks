@@ -1,9 +1,4 @@
 package main
-
-// RunSJF schedules crews using non-preemptive Shortest Job First: once a crew
-// starts using the CPU it runs to completion. Among crews that have already
-// arrived, the one with the smallest burst time goes next; ties are broken by
-// arrival time, then by input order.
 func RunSJF(processes []Process) ([]GanttSegment, []ProcessResult) {
 	remaining := make([]Process, len(processes))
 	copy(remaining, processes)

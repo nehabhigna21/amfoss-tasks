@@ -1,173 +1,103 @@
 # Grand Line Guardian
 
-A terminal-based, real-time process monitor (in the spirit of `htop`/`btop++`)
-written in Python. Every running process is treated as a "ship" on the
-Grand Line — the navigator (this tool) keeps watch over all of them.
+A terminal-based process monitor built in Python. It works like htop or btop++. With a fun twist. Every running process is treated as a ship on the Grand Line. The tool acts as the navigator watching over all these ships in time.
 
 ## Features
+A live table showing every process updated every 0.5 seconds:
+Process ID (PID)
+Process Name
+CPU Usage (%)
+Memory Usage (RSS)
+- System-wide stats in the header also refreshed every 0.5 seconds:
+Current time
+Total CPU usage (%)
+Total memory usage (used / total with percentage)
+Total active process count
+Keyboard navigation:
+use Up and Down arrows to move the selection through the list of processes. If the list is longer than the terminal the view scrolls like in htop.
 
-- Live table of every active process, refreshed every 0.5 seconds:
-  - Process ID (PID)
-  - Process Name
-  - CPU Usage (%)
-  - Memory Usage (RSS)
-- System-wide totals in the header, also refreshed every 0.5 seconds:
-  - Current time
-  - Total CPU usage (%)
-  - Total memory usage (used / total, with percentage)
-  - Total active process count
-- Keyboard navigation: **Up/Down** arrows move the selection cursor through
-  the process list, scrolling the view (like `htop`) when the list is
-  taller than the terminal
-- **x** sends `SIGTERM` to the selected process (terminate a troublesome
-  ship)
-- **q** quits and restores the terminal to its normal state
+Press x to send SIGTERM to the selected process. This terminates a ship.
+
+Press q to quit. The terminal returns to its state after quitting.
 
 ## Project layout
 
-The program is split by responsibility instead of living in one script:
+On overall, The code is split into files based on responsibility:
 
-- `proc_reader.py` — every read of `/proc` (the actual "how do we get this
-  data" logic): per-process name/memory/CPU ticks, system-wide CPU ticks,
-  system-wide memory.
-- `input_handler.py` — `RawTerminal`, a context manager that puts the
-  terminal into cbreak mode with echo off and always restores it on exit,
-  plus `get_key()` for non-blocking keypress reads (including arrow-key
-  escape sequences).
-- `actions.py` — `kill_process()`, the one thing the tool does *to* a
-  process rather than just reading.
-- `models.py` — the `ProcessRow` record passed from data collection to
-  rendering.
-- `ui.py` — builds the `rich` renderables: the stats header panel, the
-  process table, the footer, and the htop-style viewport windowing that
-  keeps the header/footer on screen when the process list overflows the
-  terminal.
-- `main.py` — the refresh loop: snapshot, sleep-while-polling-keys,
-  snapshot again, compute deltas, render.
+proc_reader.py. Handles all reads from /proc. This includes getting process names, memory, CPU ticks, system-wide CPU ticks and system-wide memory data.
+input_handler.py. Defines RawTerminal a context manager that sets the terminal to cbreak mode with echo off and restores it when the program ends. It also includes get_key() for reading keystrokes without blocking.
+actions.py. Contains kill_process() the function that actually does something to a process.
+models.py. Defines the ProcessRow structure used to pass data from collection to display.
+ui.py. Builds the visual interface using rich. It creates the stats header panel, the process table, the footer and manages the viewport so the header and footer stay visible when the list of processes is too long.
+main.py. 
+Runs the main loop: 
+take a snapshot sleep while checking for keypresses take another snapshot calculate the differences then update the display.
 
 ## Approach
 
-### Reading process/system data
+ Reading process and system data of relying on external libraries like psutil this tool reads directly from the /proc virtual filesystem. This is how other tools like ps,top and htop get their data on Linux systems.
 
-Rather than depending on a third-party library like `psutil`, the tool
-reads process and system information directly from the `/proc` virtual
-filesystem, which is how tools like `ps`, `top`, and `htop` get their data
-on Linux:
+/proc/<pid>/comm gives the name of the process.
 
-- `/proc/<pid>/comm` — the process name
-- `/proc/<pid>/stat` — fields 14 and 15 are the process's user-mode
-  (`utime`) and kernel-mode (`stime`) CPU ticks
-- `/proc/<pid>/status` — `VmRSS` is the process's resident memory
-- `/proc/stat` — the first line (`user nice system idle iowait irq softirq
-  steal guest guest_nice`) gives system-wide CPU ticks; summing all fields
-  gives total ticks, and `idle + iowait` gives idle ticks
-- `/proc/meminfo` — `MemTotal` and `MemAvailable` give total and used
-  system memory
-- A process disappearing between reads (`FileNotFoundError`) is treated as
-  a normal, expected race, not an error
+/proc/<pid>/stat provides fields 14 and 15 for user-mode (utime) and kernel-mode (stime) CPU ticks.
 
-**CPU percentage**, both per-process and system-wide, is computed the same
-way `top` does it: take two snapshots half a second apart and divide the
-*delta*, not an instantaneous value (ticks are cumulative since boot, so a
-single read can't yield a rate):
+/proc/<pid>/status has the VmRSS value, which's the resident memory size.
 
-```
-process cpu%  = (process_ticks_delta   / system_ticks_delta) * 100
-system  cpu%  = (1 - idle_ticks_delta  / system_ticks_delta) * 100
-```
+/proc/stat contains the first line with system-wide CPU tick counts (user nice system idle iowait irq softirq steal guest guest_nice). Adding all fields gives ticks and idle + iowait gives idle ticks.
 
+ /proc/meminfo includes MemTotal and MemAvailable which give total and available memory.
+
+If a process disappears between two reads, its treated as a race condition. There is no error,its expected behavior.
+
+**CPU percentage** both per process and system-wide is calculated the way as `top` does it. Of using a single read the tool takes two snapshots half a second apart. Then it divides the difference in tick counts by the elapsed ticks.
+
+For a process:
+
+process cpu% = (process_ticks_delta / system_ticks_delta) * 100
+For the system:
+system cpu% = (1. Idle_ticks_delta / system_ticks_delta) * 100
 ### Keyboard input
 
-Handled without any external input library:
+No external input library is used. Everything is handled natively.
+ 
+ The terminal settings are always restored on exit even if the program is interrupted. This prevents leaving the shell in mode, which would break normal typing.
 
-- `tty.setcbreak()` puts the terminal into character-at-a-time mode so
-  keys are available immediately instead of only after Enter is pressed;
-  echo is disabled separately so keystrokes don't visibly interfere with
-  the live display.
-- `select.select()` on `stdin`'s file descriptor makes reading
-  non-blocking, so the refresh loop can redraw the screen every 0.5s while
-  still noticing a keypress the moment it happens.
-- Arrow keys arrive as a 3-byte escape sequence (`ESC [ A` for up, `ESC [
-  B` for down). Because `select()` watches the raw file descriptor, all
-  reads in `get_key()` use `os.read(fd, 1)` directly instead of the
-  buffered `sys.stdin.read()` — mixing the two caused `select()` and
-  `read()` to disagree about what was actually pending, which silently
-  broke arrow-key detection during testing.
-- The original terminal settings are always restored in
-  `RawTerminal.__exit__`, even if the program is interrupted, so the shell
-  isn't left in raw mode.
 
-### Rendering
+The display uses rich (https://github.com/Textualize/rich) the only external dependency. It enables full-screen UIs without manual clearing or padding.
 
-The display uses [`rich`](https://github.com/Textualize/rich) — the only
-external dependency — for a proper full-screen UI instead of manually
-clearing the terminal and printing padded strings:
+Live(... auto_refresh=False, screen=True) draws to the terminal’s alternate screen buffer and only updates when live.refresh() is called. This keeps the 0.5-second poll-and-render loop fully in control. No background threads interfere with rendering timing.
 
-- `Live(..., auto_refresh=False, screen=True)` draws to the terminal's
-  alternate screen buffer and only redraws when `live.refresh()` is called
-  explicitly, so the existing 0.5s poll-and-render loop stays in full
-  control of pacing (no background refresh thread fighting with the
-  keyboard-polling loop).
-- A `Panel` header shows the system-wide stats; a `Table` shows the
-  process list with the selected row rendered in reverse video; another
-  `Panel` footer shows status messages and controls.
-- If the process list is taller than the terminal, `ui.build_screen()`
-  windows the table to a scrolling viewport centered on the selection
-  (like `htop`) instead of letting content clip off the bottom — the
-  non-table chrome (header + table borders + footer) is a constant 11
-  lines, so the available row budget is just `terminal_height - 11`.
+ A Panel shows the system stats at the top.
+ A Table displays the process list. The selected row appears in reverse video.
+Another Panel at the bottom shows status messages and controls.
+When the list of processes is taller than the terminal, ui.build_screen() creates a scrolling viewport centered on the selected row. Like htop this ensures the header and footer remain visible. The non-table parts (header, borders, footer) take up 11 lines. So the number of rows available for the process list is terminal_height. 11.
 
-## Running it
-
-```bash
+## Final Running it
 pip install -r requirements.txt
 python3 main.py
-```
-
-Controls:
-
-| Key        | Action                                    |
-|------------|--------------------------------------------|
-| Up / Down  | Move the selection cursor / scroll          |
-| x          | Terminate the selected process (SIGTERM)    |
-| q          | Quit                                        |
 
 ## Resources used
 
-- [`proc(5)` man page](https://man7.org/linux/man-pages/man5/proc.5.html) —
-  the field layout of `/proc/<pid>/stat`, `/proc/<pid>/status`,
-  `/proc/stat`, and `/proc/meminfo`
-- [Python `termios`/`tty` documentation](https://docs.python.org/3/library/tty.html)
-- [Python `select` documentation](https://docs.python.org/3/library/select.html)
-- [`rich` documentation](https://rich.readthedocs.io/) — `Live`, `Table`,
-  `Panel`
-- How `top`/`htop` compute CPU percentage from two time-separated tick
-  samples (general OS-monitoring background reading)
+https://man7.org/linux/man-pages/man5/proc.5.html.
+Explains the format of /proc/<pid>/stat` `/proc/<pid>/status` `/proc/stat and /proc/meminfo
 
-## New concepts learned
+https://docs.python.org/3/library/tty.html
 
-- The `/proc` filesystem is not a real disk filesystem — it's a virtual
-  interface the Linux kernel exposes so user-space tools can read live
-  kernel process/system state as plain text files, without special
-  syscalls.
-- CPU usage isn't a value the kernel hands you directly per process or
-  system-wide — it's derived by sampling cumulative tick counters twice
-  and dividing by the elapsed ticks, and system-wide "busy" percentage is
-  just `1 - idle_fraction`.
-- Terminal raw/cbreak mode, and why `select()` must operate on the same
-  file descriptor that ultimately performs the `read()` — Python's
-  buffered `sys.stdin` wrapper can silently consume bytes that `select()`
-  doesn't know about, which breaks multi-byte input like arrow-key escape
-  sequences.
-- Sending `SIGTERM` via `os.kill()` versus `SIGKILL`: `SIGTERM` gives a
-  process a chance to clean up, which is the more polite default for an
-  interactive "terminate" action.
-- `rich.live.Live` with `auto_refresh=False` gives full manual control over
-  when a frame is redrawn, which matters when the redraw has to interleave
-  with a hand-rolled keyboard-polling loop instead of running on its own
-  timer.
-- Why a real process monitor has to window/scroll its list instead of
-  printing every row: content taller than the terminal doesn't wrap or
-  scroll automatically inside an alternate-screen `Live` display, it just
-  gets clipped — the tool has to track terminal height itself and decide
-  what's currently visible.
+Python select documentation-https://docs.python.org/3/library/select.html
+
+https://rich.readthedocs.io/. Covers Live,Table and Panel
+ How top and htop calculate CPU percentage using two time-separated tick samples (general OS monitoring knowledge)
+
+## what i learnt
+
+The /proc filesystem isn't a real disk file system. It's an interface provided by the Linux kernel. It lets programs read kernel data as plain text files without needing special syscalls.
+
+CPU usage isn’t given directly by the kernel. It’s computed from two samples taken some time apart. The percentage is based on the change in ticks divided by total ticks. System "busy" percentage is simply 1. Idle_fraction.
+
+Terminal raw and cbreak modes mean input becomes immediate and echoed characters don't appear on screen.. Using select() requires operating on the same file descriptor that performs the actual read. Mixing buffered sys.stdin with select() consumes bytes which breaks multi-byte inputs like arrow keys.
+
+Sending SIGTERM via os.kill() is better than SIGKILL for interactive termination. SIGTERM lets a process clean up gracefully making it more polite.
+
+rich.live.Live, with auto_refresh=False` allows control over when each frame is redrawn. This is crucial when the refresh must work alongside a managed keyboard polling loop not run on its own timer.
+
+Real process monitors need to implement windowing and scrolling. In a screen Live display content doesn’t wrap or scroll automatically. If the output exceeds the height it gets clipped. The program must track the size and decide what part of the list should be visible.

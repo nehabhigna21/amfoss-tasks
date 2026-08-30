@@ -1,15 +1,14 @@
 # TASK-01: Git Exercises
 
 All 23 exercises from [Git Exercises](https://gitexercises.fracz.com/) completed
-and verified (`git verify`). Completion screenshot: `completion-screenshot.png`.
+and were verified (`git verify`). Completion screenshot: `completion-screenshot.png`.
 
-Going in, I thought this would be a refresher on commands I already knew.
+Going in, I thought this would be a practice on commands.
 It turned into something closer to an archaeology dig through Git's internals
-— `reflog`, `fsck`, `bisect` — and a few honest reminders that "it looks right"
-and "it is right" are not the same thing until `git verify` says so.
+ `reflog`, `fsck`, `bisect`  and honestly `git verify` gave me a reality check.
 
-Below, for each exercise: the objective, the commands I actually used, why
-they were the right call, and — where it wasn't smooth — what went wrong
+Below, for each exercise , the objective, the commands I actually used, why
+they were right , and where it wasn't smooth,what went wrong
 first and how I found my way to the fix.
 
 ---
@@ -22,15 +21,14 @@ git start
 git start master
 git verify
 ```
-> `git start` sets up the exercise environment; `git start master` does it
-> explicitly for the warm-up exercise on `master`; `git verify` checks the
-> solution against the server before moving on to the next one.
+ `git start` sets up the exercise environment; `git start master` does it explicitly for the warm-up exercise on `master`;
+ `git verify` checks thesolution against the server before moving on to the next one.
 
 ---
 
 ## 2. Commit One File
 
-Two files were present in the working directory, but only one needed committing.
+Two files were present in the working directory,but only one needed committing.
 
 ### Commands Used
 ```bash
@@ -38,14 +36,13 @@ git add A.txt
 git commit -m "Add A.txt"
 git verify
 ```
-> `git add A.txt` stages only that file, leaving the other untouched, and
-> the commit that follows includes just that change.
+ `git add A.txt` stages only that file,leaving the other untouched,and the commit that follows includes just that change.
 
 ---
 
 ## 3. Commit One File of Two Currently Staged
 
-Both files were already staged; the goal was to commit only one of them.
+Both files were already staged, the goal was to commit only one of them.
 
 ### Commands Used
 ```bash
@@ -53,8 +50,7 @@ git reset B.txt
 git commit -m "Add A.txt"
 git verify
 ```
-> `git reset B.txt` unstages it without touching the working directory, so
-> the following commit only includes `A.txt`.
+ `git reset B.txt` unstages it without touching the working directory, so the following commit only includes `A.txt`.
 
 ---
 
@@ -70,12 +66,9 @@ git add .gitignore
 git commit -m "Add gitignore"
 git verify
 ```
-> Adds rules so compiled/binary files and the `libraries/` directory are
-> never tracked, then commits the `.gitignore` itself.
+ Adds rules so compiled/binary files and the `libraries/` directory are never tracked, then commits the `.gitignore` itself.
 
-**What went wrong first:** my initial `.gitignore` was created with `touch`
-— completely empty, with no actual ignore rules in it. Verification failed
-until I remembered the file needs content, not just existence.
+**What went wrong first:** my initial `.gitignore` was created with `touch` completely empty,with no actual ignore rules in it. Verification failed until I realise the file needs content.
 
 ---
 
@@ -89,8 +82,7 @@ current one.
 git reset --hard escaped
 git verify
 ```
-> The current branch had no work of its own yet, so hard-resetting onto
-> `escaped` was enough to bring it fully up to date.
+ The current branch had no work of its own yet,so hard-resetting onto  `escaped` was enough to bring it fully up to date.
 
 ---
 
@@ -105,16 +97,14 @@ git add equation.txt
 git commit -m "Resolve merge conflict"
 git verify
 ```
-> The merge left `equation.txt` with conflicting content from both branches;
-> resolving it meant writing the correct value by hand, staging it, and
-> completing the merge commit.
+ The merge left `equation.txt` with conflicting content from both branches;
+ resolving it meant writing the correct value by hand,staging it,and completing the merge commit.
 
 ---
 
 ## 7. Save Your Work
 
-Objective: stash unfinished work, fix an urgent bug, then restore and finish
-the original work.
+Objective: stash unfinished work, fix an urgent bug, then restore and finish the original work.
 
 ### Commands Used
 ```bash
@@ -128,13 +118,11 @@ git add bug.txt program.txt
 git commit -m "Finish work"
 git verify
 ```
-> `git stash` sets the in-progress changes aside so the working tree is
-> clean for the urgent fix; `git stash pop` brings them back afterward to
-> finish.
+ `git stash` sets the in-progress changes aside so the working tree is
+clean for the urgent fix; `git stash pop` brings them back afterward to
+finish.
 
-**What went wrong first:** it took a couple of tries — I initially stashed
-the wrong thing and committed at the wrong point, which `git verify` caught.
-The actual fix was to delete the line marked `THIS IS A BUG` outright, not
+**What went wrong first:** it took a couple of tries ,I initially stashed the wrong thing and committed at the wrong point, which `git verify` caught. The actual fix was to delete the line marked `THIS IS A BUG` outright, not
 just append more text near it.
 
 ---
@@ -151,11 +139,9 @@ git reset --hard HEAD~1
 git rebase hot-bugfix
 git verify
 ```
-> Dropped the bad commit with `reset --hard HEAD~1`, then rebased onto
-> `hot-bugfix` so its fix replaced it in the history.
+ Dropped the bad commit with `reset --hard HEAD~1`, then rebased onto `hot-bugfix` so its fix replaced it in the history.
 
-**What went wrong first:** I tried `git cherry-pick hot-bugfix` directly,
-which conflicted. Aborting it and using reset + rebase instead worked
+**What went wrong first:** I tried `git cherry-pick hot-bugfix` directly, which clearly did not work. Aborting it and using reset + rebase instead worked.
 cleanly, since it replays from a shared ancestor rather than a diverged one.
 
 ---
@@ -168,8 +154,7 @@ git rm --cached ignored.txt
 git commit -m "Stop tracking ignored.txt"
 git verify
 ```
-> `--cached` untracks the file without deleting it on disk, since it's now
-> meant to be covered by `.gitignore` instead.
+ `--cached` untracks the file without deleting it on disk, since it's now meant to be covered by `.gitignore` instead.
 
 ---
 
@@ -181,9 +166,7 @@ git mv File.txt file.txt
 git commit -m "Rename file"
 git verify
 ```
-> `git mv` records the rename explicitly, which matters on case-sensitive
-> filesystems where a plain OS-level rename can confuse Git about whether
-> this is an add/delete or a rename.
+ `git mv` records the rename explicitly, which matters on case-sensitive filesystems where a plain OS-level rename can confuse Git about whether this is an add/delete or a rename.
 
 ---
 
@@ -196,8 +179,7 @@ git add file.txt
 git commit --amend -m "Add Hello world"
 git verify
 ```
-> The typo was in the most recent commit, so `commit --amend` fixes both the
-> content and the message in place rather than adding a new commit on top.
+The typo was in the most recent commit, so `commit --amend` fixes both the content and the message in place rather than adding a new commit on top.
 
 ---
 
@@ -208,9 +190,9 @@ git verify
 GIT_COMMITTER_DATE="1987-08-21 12:00:00" git commit --amend --no-edit --date="1987-08-21 12:00:00"
 git verify
 ```
-> A commit actually carries two dates — the author date (`--date`) and the
-> committer date (`GIT_COMMITTER_DATE`) — and both needed to match the
-> target date before verification passed.
+A commit actually carries two dates — the author date (`--date`) and the
+ committer date (`GIT_COMMITTER_DATE`) and both needed to match the
+target date before verification passed.
 
 ---
 
@@ -227,9 +209,9 @@ git add file.txt
 git rebase --continue
 git verify
 ```
-> Interactive rebase pauses at the marked commit, letting it be amended in
-> place, then `rebase --continue` replays the remaining commits on top of
-> the correction.
+Interactive rebase pauses at the marked commit, letting it be amended in
+place, then `rebase --continue` replays the remaining commits on top of
+the correction.
 
 ---
 
@@ -247,17 +229,16 @@ done
 git reset --hard 2de7a81
 git verify
 ```
-> `git reflog` tracks where `HEAD` has pointed even after a branch is reset
-> away from a commit, and `git fsck --lost-found` surfaces commits that are
-> still in the object database but unreachable from any branch. This is
-> where the task stopped feeling like "using Git" and started feeling like
-> understanding how it actually stores things.
+`git reflog` tracks where `HEAD` has pointed even after a branch is reset
+ away from a commit, and `git fsck --lost-found` surfaces commits that are
+ still in the object database but unreachable from any branch. This is
+where the task stopped feeling like "using Git" and started feeling like
+understanding how it actually stores things.
 
-**What went wrong first:** several dangling commits turned up, not just one,
-so I had to read each commit's message with `git show --no-patch` to
-identify the specific one described in the exercise ("Very imporant piece of
+**What went wrong first:**  Several dangling commits turned up not one
+so I had to read each commits message, with `git show --no-patch` to
+identify the specific one described in the exercise ("Very important piece of
 work") rather than guessing at a hash.
-
 ---
 
 ## 15. Split Commit
@@ -274,8 +255,8 @@ git add second.txt
 git commit -m "Add secont.txt"
 git verify
 ```
-> `git reset HEAD^` undoes the commit but keeps its changes unstaged in the
-> working directory, so each file can be staged and committed separately.
+`git reset HEAD^` undo the commit but keeps its changes unstaged in the
+ working directory, so each file can be staged and committed separately.
 
 ---
 
@@ -289,8 +270,8 @@ git rebase -i HEAD~2
 # change `pick` to `squash` on the second commit
 git verify
 ```
-> `squash` folds a commit into the one before it, combining both diffs into
-> a single commit.
+ `squash` folds a commit into the one before it, combining both diffs into
+ a single commit.
 
 ---
 
@@ -303,8 +284,7 @@ git add script.sh
 git commit --amend --no-edit
 git verify
 ```
-> Git tracks the executable bit as part of a file's mode; `chmod` sets it on
-> disk, and re-adding + amending records that mode change in the commit.
+ Git tracks the executable bit as part of a file's mode; `chmod` sets it on disk, and re-adding + amending records that mode change in the commit.
 
 ---
 
@@ -320,9 +300,7 @@ git add .
 git commit -m "Task 2"
 git verify
 ```
-> `git add -p` walks through the file's changes hunk by hunk, so only some
-> of them get staged — letting the same file be committed in two logical
-> parts.
+`git add -p` walks through the file's changes hunk by hunk, so only some of them get staged —,letting the same file be committed in two logical parts.
 
 ---
 
@@ -341,16 +319,12 @@ git add program.txt
 git commit -m "Complete Feature C"
 git verify
 ```
-> `cherry-pick` replays individual commits from other branches onto the
-> current one. `feature-c` needed several commits combined into one, so
-> `merge --squash` handled that, and the resulting conflicts in
-> `program.txt` were resolved manually before committing.
+ `cherry-pick` replays individual commits from other branches onto the
+ current one. `feature-c` needed several commits combined into one, so
+ `merge --squash` handled that, and the resulting conflicts in
+`program.txt` were resolved manually before committing.
 
-**What went wrong first:** this was the hardest exercise by far — several
-rounds of cherry-picking the wrong commits, conflicting merges, and rebasing
-to undo my own mistakes before arriving at the combination above. It's the
-one exercise where I genuinely had to slow down and read the branch graph
-instead of guessing.
+**What went wrong first:** This was, by far the exercise. I went through several rounds of picking the wrong commits dealing with conflicting merges and rebasing just to fix my own mistakes. It took a lot of time before I finally got to the combination. For the time I actually had to slow down and carefully look at the branch graph instead of just guessing what would work.
 
 ---
 
@@ -364,9 +338,9 @@ that shouldn't come along.
 git rebase --onto your-master issue-555
 git verify
 ```
-> `rebase --onto <newbase> <upstream>` replays only the commits on the
-> current branch that aren't on `issue-555`, directly onto `your-master` —
-> skipping the ones in between.
+`rebase --onto <newbase> <upstream>` replays only the commits on the
+ current branch that aren't on `issue-555`, directly onto `your-master` 
+ skipping the ones in between.
 
 ---
 
@@ -380,8 +354,8 @@ git rebase -i HEAD~2
 # swap the two `pick` lines, save
 git verify
 ```
-> Interactive rebase replays commits in the order listed in its todo file;
-> reordering the two lines and saving swaps their positions in history.
+ Interactive rebase replays commits in the order listed in its todo file;
+ reordering the two lines and saving swaps their positions in history.
 
 ---
 
@@ -389,7 +363,7 @@ git verify
 
 Objective: find every commit that introduced the word *shit* into
 `words.txt` or `list.txt` across 100+ generated commits, and replace it with
-*flower* — without leaving the original word visible anywhere in history.
+*flower* ,without leaving the original word visible anywhere in history.
 
 ### Commands Used
 ```bash
@@ -402,23 +376,22 @@ git commit --amend --no-edit
 git rebase --continue
 git verify
 ```
-> `git log -S"shit"` (the "pickaxe" search) finds every commit that added or
-> removed that exact string, rather than reading through 100+ commits by
-> hand. Each one is edited in place during an interactive rebase, then
-> amended.
-
-**What went wrong first — the real challenge of this task:** two of the
-three fixes were wrong, and I didn't notice at the time. One commit ended up
-adding a blank line instead of "flower," so the swearword was gone but so
-was the intended replacement. Another accidentally overwrote a completely
-unrelated word earlier in the file (`sit` became `flower`) while still
-leaving its own target line blank. Both mistakes were invisible to a plain
-`grep`, since there was no longer any swearword to search for — just words
+`git log -S"shit"`(the pickaxe search) finds every commit that added or
+removed that string rather than reading through 100 plus commits by
+hand. Each one is edited in place during a rebase then
+amended.
+**What went wrong first:** the challenge of this task two of the
+three fixes were wrong and I didn't notice at the time. One commit ended up
+adding a line instead of "flower " so the swearword was gone but so
+was the intended replacement. Another accidentally overwrote a
+unrelated word earlier in the file 'sit' became 'flower' while still
+leaving its own target line blank. Both mistakes were invisible to a
+`grep` since there was no longer any swearword to search for just words
 missing where they shouldn't have been. `git verify` was what actually
-caught both, by naming the exact wrong word it found each time. I fixed
-them by re-entering interactive rebase at the specific commit hash
-(`git rebase -i <hash>^`), checking the exact line number rather than
-assuming it was the last one, and re-verifying after each fix.
+caught both by naming the wrong word it found each time. I fixed
+them by reentering interactive rebase at the specific commit hash
+`git rebase -i <hash>^` checking the exact line number rather than
+assuming it was the last one and re-verifying, after each fix.
 
 ---
 
@@ -436,14 +409,12 @@ git bisect reset
 git push origin <COMMIT_ID>:find-bug
 git verify
 ```
-> `git bisect` performs a binary search across the commit range instead of a
-> linear scan through 300 commits. `bisect run` automates every step: it
-> decodes the base64 content and greps for the word at each candidate
-> commit, using `grep -v`'s exit code (0 = not found = "good", 1 = found =
-> "bad") to narrow down to the exact first bad commit in roughly 8 steps.
-> This was the exercise that made the earlier ones click into place — a
-> concrete case for why bisecting matters when a bug's origin isn't obvious.
+ `git bisect` does a binary search over the commit range of scanning 300 commits one by one.
 
+`bisect run` automates every step. It decodes the base64 content. Uses grep to find the word in each candidate commit.
+ `grep -v` gives an exit code: 0 is the word for not found, which we consider good; 1 is the word for found, which we consider bad. That exit code helps bisect narrow the search to the first bad commit, in about eight steps.
+
+This exercise made the earlier ones click into place. It shows clearly why bisect matters when the source of a bug is not obvious.
 ---
 
 ## Screenshot
