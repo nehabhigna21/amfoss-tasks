@@ -5,13 +5,22 @@ Renaissance Person  , i always try to seek for perfection/ keen on being better 
 sometimes strike negative ends, there of lot of interests i find myself to try, which has no correlation to the field i purse. 
 
 I have big interest in Cosmology and Spectroscopy, kind of a science noob, i do have many hobbies, primarily, watching sci podcasts, writing, reading, art, chess etc.
+
+
+
+
 ***Why should we choose you?**:
 I consider myself to be persistent, and dedicate hard hours. Whatever the things i wanted to work on, i strive to be the best version.
 My curiosity would put me to explore, be creative with approach, learn new idealogies.
 I am comfortable being outside my comfort zone. When I encounter something I do not know, I do not see it as a limitation. I learn what is required, experiment with different approaches, make mistakes and keep working until I understand the problem.
 
 
+
+
+
 ***How do you intend to contribute back to the club?**:
+
+
 I am willing to take part  of difficult problems, work on projects, explore new technologies and make a difference, research solutions and help wherever my skills can be useful.
 One of the things I value most about a technical community is the opportunity to learn from people who approach problems differently.
 I want to contribute to that environment by asking meaningful questions, bringing new ideas and being someone who is willing to help others when I can.
